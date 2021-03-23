@@ -1,0 +1,232 @@
+---
+title: 'Analyzing Centre for Disease Control(CDC) Datasets'
+author: "Sujit Krishnankutty"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+
+load("C:/Users/sujit/Downloads/cdc1.Rdata")
+
+# View(cdc1)
+cdc1$exerany = factor(cdc1$exerany)
+
+#Categorizing people based on the exercise
+
+levels(cdc1$exerany)=c("No_Exercise", "Exercise")
+
+#Categorizing people based on the smoker/non-smoker
+
+cdc1$smoke100 = factor(cdc1$smoke100)
+
+levels(cdc1$smoke100) =c("Smoke_less", "Smoke_more")
+
+cdc1$hlthplan = factor(cdc1$hlthplan)
+levels(cdc1$hlthplan) =c("No_Health_cover", "Health_cover")
+
+
+```
+
+#Tabular format for finding male-female proportion for excellent and very-good health category
+
+```{r}
+prop.table(table(cdc1$genhlth=="excellent"| cdc1$genhlth=="very good",cdc1$gender),2)
+
+prop.table(table(cdc1$genhlth=="excellent"| cdc1$genhlth=="very good",cdc1$gender),2)[4]
+
+
+```
+From these proportions, we can conclude that Men have better health than women.
+
+```{r}
+
+smokers<-subset(cdc1,cdc1$smoke100=='Smoke_more')
+
+prop.table(table(smokers$genhlth=="excellent"| smokers$genhlth=="very good",smokers$gender),2)
+
+prop.table(table(smokers$genhlth=="excellent"| smokers$genhlth=="very good",smokers$gender),2)[2]
+```
+```{r}
+#Health-wise segregation for Smoking category
+
+prop.table(table(smokers$genhlth=="excellent"| smokers$genhlth=="very good",smokers$gender),2)[4]
+```
+From the above two values we can say that in the category where people smoke more, men have better health than women i.e. smoker's category.
+
+
+```{r}
+#Health-wise segregation for non-Smoking category
+non_smokers<-subset(cdc1,cdc1$smoke100=='Smoke_less')
+prop.table(table(non_smokers$genhlth=="excellent"| non_smokers$genhlth=="very good",non_smokers$gender),2)
+
+prop.table(table(non_smokers$genhlth=="excellent"| non_smokers$genhlth=="very good",non_smokers$gender),2)[2]
+```
+For the non-smokers category too, we observe men have better health than women.
+
+
+
+
+Based on the above results we can say that men have better health compare to women
+Health of non-smokers( 0.6964286 = m, 0.6 = f ) seems to be better than smokers with ( 0.6 = m, 0.5454545 = f).
+
+we can conclude that men have better health than women in both the cases.
+
+
+
+```{r}
+skew <-function(x)
+{
+  if(is.numeric(x))
+  {
+    n <- length(x)
+    
+    m3<-sum(((x-mean(x))^3)/n)
+    m2<-sum(((x-mean(x))^2)/n)
+    (m3/(m2^(3/2)))
+  }
+  else
+  {
+    NA
+  }  
+}
+```
+
+
+```{r}
+skew(mtcars$wt)
+```
+
+
+d.
+```{r}
+rep <- replicate(1000,skew(rnorm(50,mean=0,sd=1)))
+
+hist(rep)
+```
+```{r}
+mean(rep)
+
+```
+e.
+```{r}
+
+skew(rexp(50,rate=1))
+
+```
+
+```{r}
+rep2 <- replicate(1000,skew(rexp(50,rate=1)))
+hist(rep2)
+```
+
+```{r}
+mean(rep2)
+```
+
+
+```{r}
+boxplot(rep,rep2)
+```
+
+It can be observed that the mean of exponential distribution is higher as compared to that of the rnorm (random normal distribution).
+Histogram of normal distribution is mean-centred at zero & for exponential histogram is skewed left.
+There are higher outliers in case of exponential, whereas in rnorm we have both lower as well as higher outliers.
+
+Finding skewness for every variable of CDC dataset
+```{r}
+
+skewness<-sapply(cdc1,skew)
+skewness
+
+```
+
+Plotting weight-weight_desired vs age
+
+```{r}
+plot(cdc1$weight-cdc1$wtdesire~cdc1$age ,pch=20 ,col=
+  ifelse(cdc1$weight>cdc1$wtdesire & cdc1$age>30,"red",
+    ifelse(cdc1$weight>cdc1$wtdesire & cdc1$age<=30,"blue",
+      ifelse(cdc1$weight<=cdc1$wtdesire & cdc1$age>30,"orange",
+        ifelse(cdc1$weight<=cdc1$wtdesire & cdc1$age<=30,"cyan","black")))), xlab = "Age", ylab = "Weight- Weight_desire")
+```
+
+```{r}
+boxplot.out<-function(x)
+{
+  n<-length(boxplot.stats(x)$out)
+  LQ<-fivenum(x)[2]
+  HQ<-fivenum(x)[4]
+  IQR<-HQ-LQ
+  high<-0
+  low<-0
+  for(i in 1:n)
+  {
+    if(n!=0)
+    {
+      if(boxplot.stats(x)$out[i]<(LQ-(1.5*IQR)))
+      {
+        low<-low+1
+        
+      }
+      else if(boxplot.stats(x)$out[i] > (HQ+(1.5*IQR)))
+      {
+        high<-high+1
+      
+      }
+    }
+  }
+  ifelse(high!=0 & low!=0 ,"both",
+         ifelse(high==0 & low!=0, "low",
+                ifelse(high !=0 & low==0,"high","none")))
+}
+```
+
+Plot for (weight-wtdesire) vs genhlth
+
+```{r}
+boxplot(weight-wtdesire ~ genhlth, data = cdc1)
+```
+
+d.
+```{r}
+Outlier_type<-tapply(cdc1$weight-cdc1$wtdesire,cdc1$genhlth,boxplot.out)
+Outlier_type 
+
+```
+
+e.
+```{r}
+ 
+color_vector<-NULL
+
+for (i in 1:length(Outlier_type))
+{
+  if(Outlier_type[i]=="both")
+  {
+    color_vector<-c(color_vector,"red")
+  }
+  else if(Outlier_type[i]== "high")
+  {
+    color_vector<-c(color_vector,"blue")
+  }
+  else if(Outlier_type[i]=="low")
+  {
+    color_vector<-c(color_vector,"green")
+  }
+  else
+  {
+    color_vector<-c(color_vector,"yellow")
+  }
+}
+boxplot(weight-wtdesire~genhlth,data=cdc1,col=color_vector)
+```
+
+
+
+
